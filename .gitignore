@@ -49,3 +49,9 @@ qtcreator-*
 
 # Catkin custom files
 CATKIN_IGNORE
+
+# ROS workspace files
+__pycache__/
+/ros_ws/log
+/ros_ws/install
+/ros_ws/src/rplidar_ros
