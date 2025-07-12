@@ -1,0 +1,30 @@
+slam_toolbox:
+    ros__parameters:
+        # --- solver & general ---
+        solver_plugin: solver_plugins::CeresSolver
+        ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
+        ceres_preconditioner: SCHUR_JACOBI
+        mode: mapping
+        resolution: 0.05
+        max_laser_range: 20.0
+
+        # --- frames & topics ---
+        map_frame: map
+        base_frame: base_footprint
+        scan_frame: laser
+        scan_topic: /scan
+
+        # --- pure‑LiDAR mode ---
+        use_odom: false
+        odom_frame: ''
+
+        # --- drop‑queue / TF tuning ---
+        scan_queue_size: 1 # keep queue minimal in async
+        transform_timeout: 0.5 # wait a bit longer for TF
+        tf_buffer_duration: 30.0
+
+        # --- other settings you already had ---
+        throttle_scans: 1
+        map_update_interval: 5.0
+        minimum_time_interval: 0.5
+        enable_interactive_mode: true

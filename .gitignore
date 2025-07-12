@@ -55,3 +55,6 @@ __pycache__/
 /ros_ws/log
 /ros_ws/install
 /ros_ws/src/rplidar_ros
+/.vscode
+/ros_ws/src/install
+/ros_ws/src/log

@@ -1,0 +1,194 @@
+<?xml version="1.0"?>
+<!-- Updated to support proper Ackermann steering: front wheels have a steering joint (revolute Z)
+and an inner wheel‑rotation joint (continuous Y). -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robotcar">
+
+  <!-- ───────────────────────────────────────────────
+       PARAMETERS
+       ─────────────────────────────────────────────── -->
+  <xacro:property name="base_width" value="0.09" />
+  <xacro:property name="base_length" value="0.133" />
+  <xacro:property name="base_height" value="0.05" />
+
+  <xacro:property name="wheel_radius" value="0.025" />
+  <xacro:property name="wheel_width" value="0.02" />
+  <xacro:property name="wheel_xoff" value="0.05" />
+  <xacro:property name="wheel_ygap" value="0.013" />
+  <xacro:property name="wheel_zoff" value="0.01" />
+  <!-- ─────────── LiDAR parameters (configurable) ─────────── -->
+  <xacro:property name="lidar_x" value="0.05" />
+  <xacro:property name="lidar_y" value="0.00" />
+  <!-- Default mount height: sits on top of base -->
+  <xacro:property name="lidar_z" value="${base_height/2 + lidar_height/2}" />
+  <xacro:property name="lidar_radius" value="0.03" />
+  <xacro:property name="lidar_height" value="0.02" />
+  <xacro:property name="lidar_hfov" value="${2*pi}" />   <!-- 360 deg scan -->
+  <xacro:property name="lidar_samples" value="500" />
+  <xacro:property name="lidar_min_range" value="0.05" />
+  <xacro:property name="lidar_max_range" value="10.0" />
+
+  <!-- Maximum steering angle (rad) → 30 deg -->
+  <xacro:property name="steer_limit" value="0.523598" />
+
+  <!-- ───────────────────────────────────────────────
+       BASE
+       ─────────────────────────────────────────────── -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="${base_length} ${base_width} ${base_height}" />
+      </geometry>
+      <material name="Cyan">
+        <color rgba="0 1 1 1" />
+      </material>
+    </visual>
+  </link>
+
+  <link name="base_footprint" />
+  <joint name="base_joint" type="fixed">
+    <parent link="base_link" />
+    <child link="base_footprint" />
+    <origin xyz="0 0 ${-(wheel_radius + wheel_zoff)}" rpy="0 0 0" />
+  </joint>
+
+  <!-- ───────────────────────────────────────────────
+       MACROS
+       ─────────────────────────────────────────────── -->
+
+  <xacro:macro name="drive_wheel" params="prefix x_reflect y_reflect">
+    <link name="${prefix}_link">
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <mass value="0.1" />
+        <inertia ixx="1e-4" ixy="0" ixz="0" iyy="1e-4" iyz="0" izz="1e-4" />
+      </inertial>
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0" />
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}" />
+        </geometry>
+        <material name="Gray">
+          <color rgba="0.5 0.5 0.5 1" />
+        </material>
+      </visual>
+    </link>
+
+    <joint name="${prefix}_joint" type="continuous">
+      <parent link="base_link" />
+      <child link="${prefix}_link" />
+      <origin xyz="${x_reflect*wheel_xoff} ${y_reflect*(base_width/2+wheel_ygap)} ${-wheel_zoff}"
+        rpy="0 0 0" />
+      <axis xyz="0 1 0" />
+    </joint>
+  </xacro:macro>
+
+  <!-- Front wheel with steering hub + wheel rotation -->
+  <xacro:macro name="steer_wheel" params="prefix x_reflect y_reflect">
+    <!-- Steering hub rotates about Z -->
+    <link name="${prefix}_hub_link">
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <mass value="0.1" />
+        <inertia ixx="1e-4" ixy="0" ixz="0" iyy="1e-4" iyz="0" izz="1e-4" />
+      </inertial>
+    </link>
+
+    <joint name="${prefix}_steer_joint" type="revolute">
+      <parent link="base_link" />
+      <child link="${prefix}_hub_link" />
+      <origin xyz="${x_reflect*wheel_xoff} ${y_reflect*(base_width/2+wheel_ygap)} 0" rpy="0 0 0" />
+      <axis xyz="0 0 1" />
+      <limit effort="5" velocity="2" lower="-${steer_limit}" upper="${steer_limit}" />
+    </joint>
+
+    <!-- Actual wheel rotates about Y inside hub -->
+    <link name="${prefix}_link">
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <mass value="0.1" />
+        <inertia ixx="1e-4" ixy="0" ixz="0" iyy="1e-4" iyz="0" izz="1e-4" />
+      </inertial>
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0" />
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}" />
+        </geometry>
+        <material name="Gray">
+          <color rgba="0.5 0.5 0.5 1" />
+        </material>
+      </visual>
+    </link>
+
+    <joint name="${prefix}_wheel_joint" type="continuous">
+      <parent link="${prefix}_hub_link" />
+      <child link="${prefix}_link" />
+      <origin xyz="0 0 ${-wheel_zoff}" rpy="0 0 0" />
+      <axis xyz="0 1 0" />
+    </joint>
+  </xacro:macro>
+
+  <!-- ───────────────────────────────────────────────
+       INSTANTIATE WHEELS
+       ─────────────────────────────────────────────── -->
+  <xacro:drive_wheel prefix="drivewhl_l" x_reflect="-1" y_reflect="1" />
+  <xacro:drive_wheel prefix="drivewhl_r" x_reflect="-1" y_reflect="-1" />
+  <xacro:steer_wheel prefix="steerwhl_l" x_reflect="1" y_reflect="1" />
+  <xacro:steer_wheel prefix="steerwhl_r" x_reflect="1" y_reflect="-1" />
+
+  <!-- ───────────────────────────────────────────────
+       2D LIDAR (configurable)
+       ─────────────────────────────────────────────── -->
+  <link name="lidar_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="${lidar_radius}" length="${lidar_height}" />
+      </geometry>
+      <material name="Black">
+        <color rgba="0 0 0 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="${lidar_radius}" length="${lidar_height}" />
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.05" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="1e-5" />
+    </inertial>
+  </link>
+
+  <joint name="lidar_joint" type="fixed">
+    <parent link="base_link" />
+    <child link="lidar_link" />
+    <origin xyz="${lidar_x} ${lidar_y} ${lidar_z}" rpy="0 0 0" />
+  </joint>
+
+  <!-- Optional Gazebo sensor plugin -->
+  <gazebo reference="lidar_link">
+    <sensor name="lidar" type="ray">
+      <update_rate>20</update_rate>
+      <ray>
+        <scan>
+          <horizontal>
+            <samples>${lidar_samples}</samples>
+            <min_angle>${-lidar_hfov/2}</min_angle>
+            <max_angle>${lidar_hfov/2}</max_angle>
+          </horizontal>
+        </scan>
+        <range>
+          <min>${lidar_min_range}</min>
+          <max>${lidar_max_range}</max>
+        </range>
+      </ray>
+      <plugin name="gazebo_ros_laser" filename="libgazebo_ros_laser.so">
+        <topicName>scan</topicName>
+        <frameName>lidar_link</frameName>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+</robot>
